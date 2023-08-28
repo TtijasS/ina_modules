@@ -7,11 +7,13 @@ const double BUS_VOLTAGE_LSB = 0.004;      // 4mV
 const unsigned int REGISTER_RANGE{32768};  // 15 bit
 const double MAX_CURRENT{500.0};           // 1000mA
 double CURRENT_LSB = MAX_CURRENT / REGISTER_RANGE;
+char in_byte{};
 
 // Variables
 unsigned long timer1{};  // used for timer_function
 unsigned long timer2{};
 bool state{false};
+uint16_t *raw_readings;  // Array to store the raw current and voltage readings
 
 // Functions
 bool timer_function(unsigned long &, unsigned long);
@@ -51,34 +53,68 @@ void setup() {
     Serial.println(request_reg_data(INA219_ADDRESS, 0x05), BIN);
 
     timer1 = millis();
-    timer2 = millis();
+    timer2 = micros();
 }
 
 void loop() {
-    if (timer_function(timer1, 1000)) {
-        if (state) {
-            // if state is true, then pwm is on -> turn pwm off
-            analogWrite(11, 0);
-            state = false;
-        } else {
-            // if pwm is off, turn it on
-            analogWrite(11, 255);
-            state = true;
-        }
+    // int i{0};
+
+    // wait for the serial port to connect
+    while (!Serial.available()) {
+        delay(10);
+    }
+    // if letter 'a' is received
+    while (Serial.available() > 0) {
+        in_byte = Serial.read();
+        Serial.print(">");
+        Serial.println(in_byte);
+    }
+    if (in_byte == 'a') {
+        analogWrite(11, 255);
+    } else if (in_byte == 'b') {
+        analogWrite(11, 0);
     }
 
-    uint16_t *dataArray = read_ina219_i_v(INA219_ADDRESS);
+    // while (i < 3101) {
+    //     if (i == 100) {
+    //         analogWrite(11, 255);
+    //     } else if (i == 2100) {
+    //         analogWrite(11, 0);
+    //     } else if (micros() - timer2 > 150) {
+    //         uint16_t *raw_readings = read_ina219_i_v(INA219_ADDRESS);
+    //         timer2 = micros();
+    //         if (i == 0)
+    //             data_array[i] = raw_readings[1];  // voltage
+    // 			Serial.write(raw_readings[1]);
+    //         else
+    //             data_array[i] = raw_readings[0];  // current
+    // 			Serial.write(raw_readings[0]);
+    //         ++i;
+    //     }
+    // }
+
+    // for (int i : data_array) {
+    //     Serial.print(i);
+    //     Serial.print(", ");
+    // }
+
+    // Serial.println();
+    // Serial.println("Done");
+    // // stop the program here
+    // exit(0);
+
+    // iterate through elements of data_array
 
     // if (timer_function(10, timer2)) {
     //     // 1011 11101100
-    //     // Serial.print(dataArray[1], BIN);
+    //     // Serial.print(raw_readings[1], BIN);
     //     // Serial.print(" ");
-    //     // Serial.print((dataArray[1] >> 8) & 0xFF, BIN);
+    //     // Serial.print((raw_readings[1] >> 8) & 0xFF, BIN);
     //     // Serial.print(" ");
-    //     // Serial.println((dataArray[1]) & 0xFF, BIN);
-    //     // Serial.println(dataArray[1] * 0.004);
+    //     // Serial.println((raw_readings[1]) & 0xFF, BIN);
+    //     // Serial.println(raw_readings[1] * 0.004);
     // }
-    Serial.println(static_cast<int16_t>(dataArray[0]) * CURRENT_LSB * 10);
+    // Serial.print(static_cast<int16_t>(raw_readings[0]) * CURRENT_LSB * 10);
 }
 
 // put function definitions here:
@@ -93,7 +129,7 @@ bool timer_function(unsigned long &global_timer, unsigned long delay_millis) {
 
 // pg 22 https://www.ti.com/lit/ds/symlink/ina219.pdf?ts=1692784130490&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FINA219%253Futm_source%253Dgoogle%2526utm_medium%253Dcpc%2526utm_campaign%253Dasc-null-null-GPN_EN-cpc-pf-google-eu%2526utm_content%253DINA219%2526ds_k%253DINA219%2BDatasheet%2526DCM%253Dyes%2526gclid%253DCj0KCQjw3JanBhCPARIsAJpXTx7DPjhosIxfe6pl48GAchbIMAvx_KeAZJ5H3Dv8KqVLjmxZV7nUCesaAm1BEALw_wcB%2526gclsrc%253Daw.ds
 uint16_t *read_ina219_i_v(uint8_t slave_address) {
-    static uint16_t dataArray[2];  // Array to store the raw data
+    static uint16_t raw_readings[2];  // Array to store the raw data
 
     Wire.beginTransmission((uint8_t)slave_address);
     Wire.write(0x04);  // current register
@@ -101,7 +137,7 @@ uint16_t *read_ina219_i_v(uint8_t slave_address) {
 
     Wire.requestFrom((uint8_t)slave_address, (uint8_t)2);  // Read 2 bytes (1 register)
     if (Wire.available() >= 2) {
-        dataArray[0] = (Wire.read() << 8) | Wire.read();  // Current
+        raw_readings[0] = (Wire.read() << 8) | Wire.read();  // Current
     } else {
         Serial.println("Error: Unable to read data from INA219");
     }
@@ -112,8 +148,8 @@ uint16_t *read_ina219_i_v(uint8_t slave_address) {
 
     Wire.requestFrom((uint8_t)slave_address, (uint8_t)2);  // Read 2 bytes (1 registers)
     if (Wire.available() >= 2) {
-        dataArray[1] = (Wire.read() << 8) | Wire.read();  // Voltage
-        dataArray[1] >>= 3;
+        raw_readings[1] = (Wire.read() << 8) | Wire.read();  // Voltage
+        raw_readings[1] >>= 3;
     } else {
         Serial.println("Error: Unable to read data from INA219");
     }
@@ -124,12 +160,12 @@ uint16_t *read_ina219_i_v(uint8_t slave_address) {
 
     // Wire.requestFrom((uint8_t)slave_address, (uint8_t)2);  // Read 2 bytes (1 registers)
     // if (Wire.available() >= 2) {
-    // 	dataArray[2] = (Wire.read() << 8) | Wire.read();  // Voltage
+    // 	raw_readings[2] = (Wire.read() << 8) | Wire.read();  // Voltage
     // } else {
     // 	Serial.println("Error: Unable to read data from INA260");
     // }
 
-    return dataArray;
+    return raw_readings;
 }
 
 uint16_t request_reg_data(uint8_t slave_address, uint8_t register_address) {
