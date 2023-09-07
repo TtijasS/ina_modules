@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+#include "timer.h"
+
 const uint8_t INA219_ADDRESS = 0x40;       // INA260 I2C address
 const double SHUNT_VAL = 0.002;            // 2mOhm
 const double BUS_VOLTAGE_LSB = 0.004;      // 4mV
@@ -10,8 +12,6 @@ double CURRENT_LSB = MAX_CURRENT / REGISTER_RANGE;
 char in_byte{};
 
 // Variables
-unsigned long timer1{};  // used for timer_function
-unsigned long timer2{};
 bool state{false};
 uint16_t *raw_readings;  // Array to store the raw current and voltage readings
 
@@ -51,30 +51,32 @@ void setup() {
 
     Serial.print("Re-check calibration register: ");
     Serial.println(request_reg_data(INA219_ADDRESS, 0x05), BIN);
-
-    timer1 = millis();
-    timer2 = micros();
 }
+
+Timercls timer1;
+Timercls timer2;
+Timercls timer3;
 
 void loop() {
     // int i{0};
-
     // wait for the serial port to connect
-    while (!Serial.available()) {
-        delay(10);
-    }
-    // if letter 'a' is received
-    while (Serial.available() > 0) {
-        in_byte = Serial.read();
-        Serial.print(">");
-        Serial.println(in_byte);
-    }
-    if (in_byte == 'a') {
-        analogWrite(11, 255);
-    } else if (in_byte == 'b') {
-        analogWrite(11, 0);
-    }
 
+    // while (Serial.available() > 0) {
+    //     in_byte = Serial.read();
+    //     Serial.print(">");
+    //     Serial.println(in_byte);
+    // }
+    // if (in_byte == 'a') {
+    //     analogWrite(11, 255);
+    // } else if (in_byte == 'b') {
+    //     analogWrite(11, 0);
+    // }
+    if (timer1.stopwatch(1000))
+        Serial.println("1");
+    if (timer2.stopwatch(2000))
+        Serial.println("	2");
+    if (timer3.stopwatch(3000))
+        Serial.println("		3");
     // while (i < 3101) {
     //     if (i == 100) {
     //         analogWrite(11, 255);
@@ -118,14 +120,6 @@ void loop() {
 }
 
 // put function definitions here:
-
-bool timer_function(unsigned long &global_timer, unsigned long delay_millis) {
-    if (millis() - global_timer > delay_millis) {
-        global_timer = millis();
-        return true;
-    }
-    return false;
-}
 
 // pg 22 https://www.ti.com/lit/ds/symlink/ina219.pdf?ts=1692784130490&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FINA219%253Futm_source%253Dgoogle%2526utm_medium%253Dcpc%2526utm_campaign%253Dasc-null-null-GPN_EN-cpc-pf-google-eu%2526utm_content%253DINA219%2526ds_k%253DINA219%2BDatasheet%2526DCM%253Dyes%2526gclid%253DCj0KCQjw3JanBhCPARIsAJpXTx7DPjhosIxfe6pl48GAchbIMAvx_KeAZJ5H3Dv8KqVLjmxZV7nUCesaAm1BEALw_wcB%2526gclsrc%253Daw.ds
 uint16_t *read_ina219_i_v(uint8_t slave_address) {
