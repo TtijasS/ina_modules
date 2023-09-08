@@ -50,23 +50,28 @@ Timercls timer3;
 void loop() {
     // int i{0};
     // wait for the serial port to connect
+    while (Serial.available() <= 0) {
+        delay(10);
+    }
 
-    // while (Serial.available() > 0) {
-    //     in_byte = Serial.read();
-    //     Serial.print(">");
-    //     Serial.println(in_byte);
-    // }
-    // if (in_byte == 'a') {
-    //     analogWrite(11, 255);
-    // } else if (in_byte == 'b') {
-    //     analogWrite(11, 0);
-    // }
-    if (timer1.stopwatch(1000))
-        Serial.println("1");
-    if (timer2.stopwatch(2000))
-        Serial.println("	2");
-    if (timer3.stopwatch(3000))
-        Serial.println("		3");
+    while (Serial.available() > 0) {
+        in_byte = Serial.read();
+        Serial.print(">");
+        Serial.println(in_byte);
+    }
+    if (in_byte == 'a') {
+        analogWrite(11, 255);
+        Serial.println("Start");
+    } else if (in_byte == 'b') {
+        analogWrite(11, 0);
+        Serial.println("Stop");
+    }
+    // if (timer1.stopwatch(1000))
+    //     Serial.println("1");
+    // if (timer2.stopwatch(2000))
+    //     Serial.println("	2");
+    // if (timer3.stopwatch(3000))
+    //     Serial.println("		3");
     // while (i < 3101) {
     //     if (i == 100) {
     //         analogWrite(11, 255);
