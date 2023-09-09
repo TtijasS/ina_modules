@@ -9,7 +9,7 @@ const double BUS_VOLTAGE_LSB = 0.004;      // 4mV
 const unsigned int REGISTER_RANGE{32768};  // 15 bit
 
 // pg 22 https://www.ti.com/lit/ds/symlink/ina219.pdf?ts=1692784130490&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FINA219%253Futm_source%253Dgoogle%2526utm_medium%253Dcpc%2526utm_campaign%253Dasc-null-null-GPN_EN-cpc-pf-google-eu%2526utm_content%253DINA219%2526ds_k%253DINA219%2BDatasheet%2526DCM%253Dyes%2526gclid%253DCj0KCQjw3JanBhCPARIsAJpXTx7DPjhosIxfe6pl48GAchbIMAvx_KeAZJ5H3Dv8KqVLjmxZV7nUCesaAm1BEALw_wcB%2526gclsrc%253Daw.ds
-uint16_t *read_ina219_i_v(uint8_t slave_address) {
+uint16_t *read_ina219_data(uint8_t slave_address) {
     static uint16_t raw_readings[2];  // Array to store the raw data
 
     Wire.beginTransmission((uint8_t)slave_address);
@@ -35,6 +35,7 @@ uint16_t *read_ina219_i_v(uint8_t slave_address) {
         Serial.println("Error: Unable to read data from INA219");
     }
 
+	// voltage should be multiplied with 4mV, current with CURRENT_LSB
     return raw_readings;
 }
 
@@ -43,9 +44,10 @@ void set_ina219_mode(uint8_t slave_address) {
     Serial.println("Setting INA219 mode");
     // default 111001 10011111
     //     new 111000 10001111
+	// rst - brng pg1 pg0 badc badc badc badc sadc sadc sadc sadc mode mode mode
     // Prepare config register settings
     uint8_t high_byte = 0b00111000;
-    uint8_t low_byte = 0b10001111;
+    uint8_t low_byte = 0b00011111;
 
     // Begin transmission with selected slave module
     Wire.beginTransmission(slave_address);

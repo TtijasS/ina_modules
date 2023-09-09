@@ -41,31 +41,77 @@ void setup() {
 
     Serial.print("Re-check calibration register: ");
     Serial.println(request_reg_data(INA219_ADDRESS, 0x05), BIN);
+
+    Serial.println("Current multiplicator: ");
+    Serial.println(MAX_CURRENT / 32768, 10);
+    delay(5000);
 }
 
 Timercls timer1;
 Timercls timer2;
 Timercls timer3;
+uint16_t current = 12345;  // example current value
+uint16_t voltage = 54321;  // example voltage value
+uint32_t combined = ((uint32_t)current << 16) | voltage;
 
 void loop() {
+    // Serial.write(combined);
+    uint16_t *raw_readings = read_ina219_data(INA219_ADDRESS);
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xF0);
+    Serial.write(0xF0);
+    for (int i = 0; i <= 255; ++i) {
+        analogWrite(11, i);
+        send_data_n_times(INA219_ADDRESS, 80, read_ina219_data);
+    }
+    send_data_n_times(INA219_ADDRESS, 5000, read_ina219_data);
+
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0x0F);
+    Serial.write(0x0F);
+    analogWrite(11, 0);
+    delay(10000);
+    // Serial.write((byte)(combined & 0xFF));          // Send byte 0
+    // Serial.write((byte)((combined >> 8) & 0xFF));   // Send byte 1
+    // Serial.write((byte)((combined >> 16) & 0xFF));  // Send byte 2
+    // Serial.write((byte)((combined >> 24) & 0xFF));  // Send byte 3
+    // delay(1);
+
     // int i{0};
     // wait for the serial port to connect
-    while (Serial.available() <= 0) {
-        delay(10);
-    }
+    // while (Serial.available() <= 0) {
+    //     delay(10);
+    // }
 
-    while (Serial.available() > 0) {
-        in_byte = Serial.read();
-        Serial.print(">");
-        Serial.println(in_byte);
-    }
-    if (in_byte == 'a') {
-        analogWrite(11, 255);
-        Serial.println("Start");
-    } else if (in_byte == 'b') {
-        analogWrite(11, 0);
-        Serial.println("Stop");
-    }
+    // while (Serial.available() > 0) {
+    //     in_byte = Serial.read();
+    //     // Serial.print(">");
+    //     // Serial.println(in_byte);
+    // }
+    // uint16_t *raw_readings = read_ina219_data(INA219_ADDRESS);
+    // uint16_t current = raw_readings[0];
+    // uint16_t voltage = raw_readings[1];
+    // uint32_t combined = ((uint32_t)current << 16) | voltage;
+    // Serial.write(current);
+    // if (in_byte == 'a') {
+    //     analogWrite(11, 255);
+    //     // Serial.println(">Start");
+    // 	// signals the beginning of measuring process
+    //     Serial.write(0xFFFF);
+    //     send_data_n_times(INA219_ADDRESS, 100, read_ina219_data);
+    // 	// signals the end of measuring process
+    // 	Serial.write(0xFFFF);
+    // } else if (in_byte == 'b') {
+    //     analogWrite(11, 0);
+    //     // Serial.println(">Stop");
+    // 	// signals the beginning of measuring process
+    //     Serial.write(0xFFFF);
+    //     send_data_n_times(INA219_ADDRESS, 100, read_ina219_data);
+    // 	// signals the end of measuring process
+    // 	Serial.write(0xFFFF);
+    // }
     // if (timer1.stopwatch(1000))
     //     Serial.println("1");
     // if (timer2.stopwatch(2000))
@@ -78,7 +124,7 @@ void loop() {
     //     } else if (i == 2100) {
     //         analogWrite(11, 0);
     //     } else if (micros() - timer2 > 150) {
-    //         uint16_t *raw_readings = read_ina219_i_v(INA219_ADDRESS);
+    //         uint16_t *raw_readings = read_ina219_data(INA219_ADDRESS);
     //         timer2 = micros();
     //         if (i == 0)
     //             data_array[i] = raw_readings[1];  // voltage
