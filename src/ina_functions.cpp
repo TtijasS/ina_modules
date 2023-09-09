@@ -4,6 +4,8 @@
 #include <Wire.h>
 
 #include "constants.h"
+#include "ina219.h"
+#include "ina260.h"
 
 uint16_t request_reg_data(uint8_t slave_address, uint8_t register_address) {
     Wire.beginTransmission((uint8_t)slave_address);
@@ -22,7 +24,7 @@ uint16_t request_reg_data(uint8_t slave_address, uint8_t register_address) {
     return 0;
 }
 
-void send_data_n_times(uint8_t slave_address, uint16_t number_of_readings, ReadingFunction read_ina_data) {
+void rw_data_n_times(uint8_t slave_address, uint16_t number_of_readings, ReadingFunction read_ina_data) {
     /* either read one or the other
         uint16_t* raw_readings = read_ina260_data(uint8_t slave_address);
     uint16_t *raw_readings = read_ina219_data(uint8_t slave_address);
@@ -34,4 +36,31 @@ void send_data_n_times(uint8_t slave_address, uint16_t number_of_readings, Readi
         Serial.write((byte)(raw_readings[0] & 0xFF));
         Serial.write((byte)((raw_readings[0] >> 8) & 0xFF));
     }
+}
+
+void startbit() {
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xF0);
+    Serial.write(0xF0);
+}
+
+void endbit() {
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0x0F);
+    Serial.write(0x0F);
+}
+
+void read_motor_11() {
+    for (int i = 0; i <= 50; ++i) {
+        analogWrite(11, i);
+        rw_data_n_times(INA219_ADDRESS, 80, read_ina219_data);
+    }
+    for (int i = 51; i <= 255; i += 2) {
+        analogWrite(11, i);
+        rw_data_n_times(INA219_ADDRESS, 30, read_ina219_data);
+    }
+    rw_data_n_times(INA219_ADDRESS, 3000, read_ina219_data);
+    analogWrite(11, 0);
 }

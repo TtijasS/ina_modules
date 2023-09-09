@@ -55,41 +55,17 @@ uint16_t voltage = 54321;  // example voltage value
 uint32_t combined = ((uint32_t)current << 16) | voltage;
 
 void loop() {
-    // Serial.write(combined);
-    uint16_t *raw_readings = read_ina219_data(INA219_ADDRESS);
-    Serial.write(0xFF);
-    Serial.write(0xFF);
-    Serial.write(0xF0);
-    Serial.write(0xF0);
-    for (int i = 0; i <= 255; ++i) {
-        analogWrite(11, i);
-        send_data_n_times(INA219_ADDRESS, 80, read_ina219_data);
+    while (Serial.available() <= 0) {
+        delay(10);
     }
-    send_data_n_times(INA219_ADDRESS, 5000, read_ina219_data);
 
-    Serial.write(0xFF);
-    Serial.write(0xFF);
-    Serial.write(0x0F);
-    Serial.write(0x0F);
-    analogWrite(11, 0);
-    delay(10000);
-    // Serial.write((byte)(combined & 0xFF));          // Send byte 0
-    // Serial.write((byte)((combined >> 8) & 0xFF));   // Send byte 1
-    // Serial.write((byte)((combined >> 16) & 0xFF));  // Send byte 2
-    // Serial.write((byte)((combined >> 24) & 0xFF));  // Send byte 3
-    // delay(1);
-
-    // int i{0};
-    // wait for the serial port to connect
-    // while (Serial.available() <= 0) {
-    //     delay(10);
-    // }
-
-    // while (Serial.available() > 0) {
-    //     in_byte = Serial.read();
-    //     // Serial.print(">");
-    //     // Serial.println(in_byte);
-    // }
+    while (Serial.available() > 0) {
+        in_byte = Serial.read();
+    }
+    if (in_byte == 'a') {
+        read_motor_11();
+    }
+    // Serial.println(">Start");
     // uint16_t *raw_readings = read_ina219_data(INA219_ADDRESS);
     // uint16_t current = raw_readings[0];
     // uint16_t voltage = raw_readings[1];
@@ -100,7 +76,7 @@ void loop() {
     //     // Serial.println(">Start");
     // 	// signals the beginning of measuring process
     //     Serial.write(0xFFFF);
-    //     send_data_n_times(INA219_ADDRESS, 100, read_ina219_data);
+    //     rw_data_n_times(INA219_ADDRESS, 100, read_ina219_data);
     // 	// signals the end of measuring process
     // 	Serial.write(0xFFFF);
     // } else if (in_byte == 'b') {
@@ -108,7 +84,7 @@ void loop() {
     //     // Serial.println(">Stop");
     // 	// signals the beginning of measuring process
     //     Serial.write(0xFFFF);
-    //     send_data_n_times(INA219_ADDRESS, 100, read_ina219_data);
+    //     rw_data_n_times(INA219_ADDRESS, 100, read_ina219_data);
     // 	// signals the end of measuring process
     // 	Serial.write(0xFFFF);
     // }
