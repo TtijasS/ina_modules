@@ -53,14 +53,18 @@ void endbit() {
 }
 
 void read_motor_11() {
-    for (int i = 0; i <= 50; ++i) {
+    delay(400);
+    startbit();
+    const uint8_t midpoint{50};
+    for (int i = 0; i < midpoint; ++i) {
         analogWrite(11, i);
         rw_data_n_times(INA219_ADDRESS, 80, read_ina219_data);
     }
-    for (int i = 51; i <= 255; i += 2) {
+    for (int i = midpoint; i <= 255; i += 2) {
         analogWrite(11, i);
         rw_data_n_times(INA219_ADDRESS, 30, read_ina219_data);
     }
     rw_data_n_times(INA219_ADDRESS, 3000, read_ina219_data);
+    endbit();
     analogWrite(11, 0);
 }
