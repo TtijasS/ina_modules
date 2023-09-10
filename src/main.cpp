@@ -47,13 +47,6 @@ void setup() {
     delay(5000);
 }
 
-Timercls timer1;
-Timercls timer2;
-Timercls timer3;
-uint16_t current = 12345;  // example current value
-uint16_t voltage = 54321;  // example voltage value
-uint32_t combined = ((uint32_t)current << 16) | voltage;
-
 void loop() {
     while (Serial.available() <= 0) {
         delay(10);
