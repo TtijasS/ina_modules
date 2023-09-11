@@ -3,15 +3,14 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+/**
+ * This function is used to read data from the ina260 module
+ *
+ * @param slave_address Address of the ina260 module
+ * @return Array with the raw current and voltage readings
+ */
 uint16_t *read_ina260_data(uint8_t slave_address) {
-    /**
-     * This function is used to read data from the ina260 module
-     *
-     * @param slave_address Address of the ina260 module
-     * @return Array with the raw current and voltage readings
-     */
-
-    static uint16_t dataArray[2];  // Array to store the raw data
+    static uint16_t raw_readings[2];  // Array to store the raw data
 
     Wire.beginTransmission((uint8_t)slave_address);
     Wire.write(0x01);  // Register address for reading current
@@ -19,7 +18,7 @@ uint16_t *read_ina260_data(uint8_t slave_address) {
 
     Wire.requestFrom((uint8_t)slave_address, (uint8_t)2);  // Read 2 bytes (1 register)
     if (Wire.available() >= 2) {
-        dataArray[0] = (Wire.read() << 8) | Wire.read();  // Current
+        raw_readings[0] = (Wire.read() << 8) | Wire.read();  // Current
     } else {
         Serial.println("Error: Unable to read data from INA260");
     }
@@ -30,21 +29,20 @@ uint16_t *read_ina260_data(uint8_t slave_address) {
 
     Wire.requestFrom((uint8_t)slave_address, (uint8_t)2);  // Read 2 bytes (1 registers)
     if (Wire.available() >= 2) {
-        dataArray[1] = (Wire.read() << 8) | Wire.read();  // Voltage
+        raw_readings[1] = (Wire.read() << 8) | Wire.read();  // Voltage
     } else {
         Serial.println("Error: Unable to read data from INA260");
     }
-    return dataArray;
+    return raw_readings;
 }
 
-// page 22 https://www.ti.com/lit/ds/symlink/ina260.pdf?ts=1692770623410&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FINA260%253FHQS%253Dti-null-null-verifimanuf_manuf-manu-pf-octopart-wwe
+/**
+ * This function is used to set the ina260 module to the correct mode
+ * page 22 https://www.ti.com/lit/ds/symlink/ina260.pdf?ts=1692770623410&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FINA260%253FHQS%253Dti-null-null-verifimanuf_manuf-manu-pf-octopart-wwe
+ *
+ * @param slave_address Address of the ina260 module
+ */
 void set_ina260_mode(uint8_t slave_address) {
-    /**
-     * This function is used to set the ina260 module to the correct mode
-     *
-     * @param slave_address Address of the ina260 module
-     */
-
     Serial.println("Setting INA260 mode");
 
     // Actually 0b01100001 00100111
