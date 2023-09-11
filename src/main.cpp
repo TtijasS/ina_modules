@@ -31,16 +31,16 @@ void setup() {
     set_ina219_mode(INA219_ADDRESS);
 
     Serial.print("Config register: ");
-    Serial.println(request_reg_data(INA219_ADDRESS, 0x00), BIN);
+    Serial.println(request_ina_reg_data(INA219_ADDRESS, 0x00), BIN);
     Serial.print("Calibration register: ");
-    Serial.println(request_reg_data(INA219_ADDRESS, 0x05), BIN);
+    Serial.println(request_ina_reg_data(INA219_ADDRESS, 0x05), BIN);
 
     Serial.println("Setting calibration register");
     set_ina219_calibration_register(MAX_CURRENT, INA219_ADDRESS);
     Serial.println("Calibration register set to 1A");
 
     Serial.print("Re-check calibration register: ");
-    Serial.println(request_reg_data(INA219_ADDRESS, 0x05), BIN);
+    Serial.println(request_ina_reg_data(INA219_ADDRESS, 0x05), BIN);
 
     Serial.println("Current multiplicator: ");
     Serial.println(MAX_CURRENT / 32768, 10);
