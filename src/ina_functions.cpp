@@ -52,17 +52,18 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
     }
 }
 
-/**
- *	This function is used to read data from the ina219 or ina260 modules readings_n times for each pwm value from_pwm to to_pwm
- *
- *	@param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
- *	@param slave_address Address of the ina219 or ina260 modules
- *	@param readings_n Number of readings to take at each pwm value
- *	@param from_pwm PWM value to start from
- *	@param to_pwm PWM value to end at
- *	@param analog_port Port the pwm is connected to
- */
 void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_n, uint8_t from_pwm, uint8_t to_pwm, uint8_t analog_port) {
+    /**
+     *	This function is used to read data from the ina219 or ina260 modules readings_n times for each pwm value from_pwm to to_pwm
+     *
+     *	@param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
+     *	@param slave_address Address of the ina219 or ina260 modules
+     *	@param readings_n Number of readings to take at each pwm value
+     *	@param from_pwm PWM value to start from
+     *	@param to_pwm PWM value to end at
+     *	@param analog_port Port the pwm is connected to
+     */
+
     // Ensure valid PWM range
     if (from_pwm > 255) from_pwm = 255;
     if (to_pwm > 255) to_pwm = 255;
@@ -71,8 +72,8 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
     for (uint16_t pwm = from_pwm; pwm <= to_pwm; pwm++) {
         analogWrite(analog_port, pwm);
 
-        // Short delay to allow the system to stabilize (can adjust the delay time as needed)
-        delay(10);
+        // Short delay of 0.5 milliseconds (500 microseconds) to allow the system to stabilize
+        delayMicroseconds(500);
 
         for (uint16_t i = 0; i < readings_n; i++) {
             raw_readings = reading_function(slave_address);
@@ -115,7 +116,7 @@ void read_motor_11() {
      */
     delay(100);
     startbit();
-    rw_data_n_times(read_ina219_data, INA219_ADDRESS, 15, 0, 255, 11);
+    rw_data_n_times(read_ina219_data, INA219_ADDRESS, 20, 0, 255, 11);
     analogWrite(11, 255);
     rw_data_n_times(read_ina219_data, INA219_ADDRESS, 1000);
     endbit();
