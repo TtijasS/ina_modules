@@ -48,6 +48,10 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
             Serial.write((byte)((raw_readings[1] >> 8) & 0xFF));
             Serial.write((byte)(raw_readings[0] & 0xFF));
             Serial.write((byte)((raw_readings[0] >> 8) & 0xFF));
+        } else {
+            endbit();
+            delay(5);
+            Serial.println("Error: Unable to get readings.");
         }
     }
 }
@@ -84,6 +88,8 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
                 Serial.write((byte)(raw_readings[0] & 0xFF));
                 Serial.write((byte)((raw_readings[0] >> 8) & 0xFF));
             } else {
+                endbit();
+                delay(5);
                 Serial.println("Error: Unable to get readings.");
             }
         }
