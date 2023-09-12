@@ -77,11 +77,7 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
     for (uint16_t pwm = from_pwm; pwm <= to_pwm; pwm++) {
         analogWrite(analog_port, pwm);
 
-        // Short delay of 0.5 milliseconds (500 microseconds) to allow the system to stabilize
-        delayMicroseconds(200);
-
         for (uint16_t i = 0; i < readings_n; i++) {
-            delayMicroseconds(60);
             raw_readings = reading_function(slave_address);
 
             if (raw_readings != nullptr) {
@@ -126,7 +122,7 @@ void read_motor_11() {
     startbit();
     rw_data_n_times(read_ina219_data, INA219_ADDRESS, 20, 0, 255, 11);
     analogWrite(11, 255);
-    rw_data_n_times(read_ina219_data, INA219_ADDRESS, 5000);
+    rw_data_n_times(read_ina219_data, INA219_ADDRESS, 8000);
     endbit();
     analogWrite(11, 0);
 }

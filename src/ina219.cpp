@@ -56,11 +56,12 @@ void set_ina219_mode(uint8_t slave_address) {
     /*
         default 111001 10011111
         new 111000 10001111
-        rst - brng pg1 pg0 badc badc badc badc sadc sadc sadc sadc mode mode mode
+        rst,  // ,  brng, pg1, pg0, badc, badc, badc,
+        badc, sadc, sadc, sadc, sadc, mode, mode, mode
         Prepare config register settings
     */
     uint8_t high_byte = 0b00111000;
-    uint8_t low_byte = 0b00011111;
+    uint8_t low_byte = 0b10011111;
 
     // Begin transmission with selected slave module
     Wire.beginTransmission(slave_address);
