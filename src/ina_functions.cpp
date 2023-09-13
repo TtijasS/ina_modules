@@ -118,11 +118,17 @@ void read_motor_11() {
     /**
      * This function is used to read data from the ina219 module connected to motor 11
      */
+    unsigned long deltatime{};
     delay(100);
     startbit();
+    deltatime = micros();
     rw_data_n_times(read_ina219_data, INA219_ADDRESS, 20, 0, 255, 11);
     analogWrite(11, 255);
     rw_data_n_times(read_ina219_data, INA219_ADDRESS, 8000);
+    deltatime = micros() - deltatime;
     endbit();
     analogWrite(11, 0);
+    Serial.print("\nDeltatime: ");
+    Serial.print(deltatime);
+    Serial.println(" us");
 }
