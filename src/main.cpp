@@ -11,6 +11,8 @@
 char in_byte{};
 bool state{false};
 uint16_t *raw_readings;  // Array to store the raw current and voltage readings
+uint16_t pwm_delays[4]{};
+uint8_t pwm_delays_index{0xFF};
 
 void setup() {
     TCCR1A = 0b00000001;  // 8bit
@@ -28,19 +30,20 @@ void setup() {
         delay(10);
     }
 
-    Serial.print("Setting config reg");
-    set_ina219_mode(INA219_ADDRESS);
-    Serial.println("Setting calibration reg");
-    set_ina219_calibration_register(MAX_CURRENT, INA219_ADDRESS);
-    Serial.print("Calibration register set to ");
-    Serial.print(MAX_CURRENT);
-    Serial.println("mA");
+    Serial.println("Setup INA219_PWM3");
+    setup_ina219(INA219_PWM3, MAX_CURRENT);
+    Serial.println();
+    Serial.println("Setup INA219_PWM9");
+    setup_ina219(INA219_PWM9, MAX_CURRENT);
+    Serial.println();
+    Serial.println("Setup INA219_PWM10");
+    setup_ina219(INA219_PWM10, MAX_CURRENT);
+    Serial.println();
+    Serial.println("Setup INA219_PWM11");
+    setup_ina219(INA219_PWM11, MAX_CURRENT);
+    Serial.println();
 
-    Serial.println("Config register: ");
-    Serial.println(request_ina_reg_data(INA219_ADDRESS, 0x00), BIN);
-    Serial.print("Calibration register: ");
-    Serial.println(request_ina_reg_data(INA219_ADDRESS, 0x05), BIN);
-    Serial.println("Current multiplicator: ");
+    Serial.print("Current multiplicator: ");
     Serial.println(MAX_CURRENT / 32768, 10);
 }
 
@@ -55,7 +58,32 @@ void loop() {
     Serial.print('>');
     Serial.println(in_byte);
 
-    if (in_byte == 'a') {
-        read_motor_11();
+    // Keyboard character "<"
+    if (in_byte == 0x3C) {
+        read_motor_n(INA219_PWM3, PWM3);
+        read_motor_n(INA219_PWM9, PWM9);
+        read_motor_n(INA219_PWM10, PWM10);
+        read_motor_n(INA219_PWM11, PWM11);
+
+    }  // Keyboard character ">"
+    else if (in_byte == 0x3E) {
+        pwm_delays[pwm_delays_index] = read_two_bytes();
+
+        if (pwm_delays_index >= 4)
+            pwm_delays_index = 0xFF;
+        else
+            pwm_delays_index++;
     }
+}
+
+int read_two_bytes() {
+    while (Serial.available() < 2) {  // Wait until two bytes are available
+        delay(10);
+    }
+
+    byte msb = (byte)Serial.read();  // Read the first byte (MSB)
+    byte lsb = (byte)Serial.read();  // Read the second byte (LSB)
+
+    uint16_t combined = (msb << 8) | lsb;  // Shift the MSB left by 8 bits and OR with LSB
+    return combined;
 }

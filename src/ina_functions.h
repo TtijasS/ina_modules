@@ -15,6 +15,6 @@ void startbit();
 
 void endbit();
 
-void read_motor_11();
+void read_motor_n(uint8_t slave_address, uint8_t analog_port);
 
 #endif

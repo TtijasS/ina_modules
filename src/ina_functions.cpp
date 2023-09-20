@@ -114,7 +114,7 @@ void endbit() {
     Serial.write(0x0F);
 }
 
-void read_motor_11() {
+void read_motor_n(uint8_t slave_address, uint8_t analog_port) {
     /**
      * This function is used to read data from the ina219 module connected to motor 11
      */
@@ -122,13 +122,12 @@ void read_motor_11() {
     delay(100);
     startbit();
     deltatime = micros();
-    rw_data_n_times(read_ina219_data, INA219_ADDRESS, 20, 0, 255, 11);
+    rw_data_n_times(read_ina219_data, slave_address, 20, 0, 255, analog_port);
     analogWrite(11, 255);
-    rw_data_n_times(read_ina219_data, INA219_ADDRESS, 8000);
+    rw_data_n_times(read_ina219_data, slave_address, 8000);
     deltatime = micros() - deltatime;
     endbit();
-    analogWrite(11, 0);
+    analogWrite(analog_port, 0);
     Serial.print("\nDeltatime: ");
-    Serial.print(deltatime);
-    Serial.println(" us");
+    Serial.println(deltatime);
 }

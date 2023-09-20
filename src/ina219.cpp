@@ -3,10 +3,32 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+#include "constants.h"
+#include "ina_functions.h"
+
 // ina219 specific constants
 const double SHUNT_VAL = 0.002;            // 2mOhm
 const double BUS_VOLTAGE_LSB = 0.004;      // 4mV
 const unsigned int REGISTER_RANGE{32768};  // 15 bit
+
+/**
+ * This function is used to setup the ina219 module.
+ *
+ * @param slave_address Address of the ina219 module
+ * @param max_current Maximum current the ina219 module will measure
+ */
+void setup_ina219(uint8_t slave_address, uint16_t max_current) {
+    set_ina219_mode(slave_address);
+    set_ina219_calibration_register(max_current, slave_address);
+
+    Serial.print("Calibration register set to ");
+    Serial.print(max_current);
+    Serial.println("mA");
+    Serial.print("Config register: ");
+    Serial.println(request_ina_reg_data(slave_address, 0x00), BIN);
+    Serial.print("Calibration register: ");
+    Serial.println(request_ina_reg_data(slave_address, 0x05), BIN);
+}
 
 /**
  * This function is used to read data from the ina219 module
@@ -52,7 +74,8 @@ uint16_t *read_ina219_data(uint8_t slave_address) {
  * @param slave_address Address of the ina219 module
  */
 void set_ina219_mode(uint8_t slave_address) {
-    Serial.println("Setting INA219 mode");
+    Serial.print("Setting INA219 mode @");
+    Serial.println(slave_address, HEX);
     /*
         default 111001 10011111
         new 111000 10001111
@@ -85,6 +108,8 @@ void set_ina219_mode(uint8_t slave_address) {
  * @param slave_address Address of the ina219 module
  */
 void set_ina219_calibration_register(float max_current, uint8_t slave_address) {
+    Serial.print("Setting INA219 calib reg @");
+    Serial.println(slave_address, HEX);
     /*
         1A max -> current_lsb = 30.517uA
         cal_reg = 671.1 (671 truncated)
@@ -96,27 +121,27 @@ void set_ina219_calibration_register(float max_current, uint8_t slave_address) {
 
     double current_lsb = max_current / REGISTER_RANGE;  // gives 0.000030517578125
     double calibration_value = 0.04096 / (current_lsb * SHUNT_VAL);
-    Serial.print("Calibration value: ");
-    Serial.println(calibration_value);
+    // Serial.print("Calibration value: ");
+    // Serial.println(calibration_value);
 
     // convert to uint16_t and truncate the decimal part
     uint16_t calibration_int = (static_cast<uint16_t>(calibration_value) + 1);
 
-    Serial.print("Truncated pre shift:  ");
-    Serial.println(calibration_int, BIN);
+    // Serial.print("Truncated pre shift:  ");
+    // Serial.println(calibration_int, BIN);
 
     calibration_int = calibration_int << 1;  // shift left by 1 bit because FS0 (LSB) is not used
     // keep the MSB and truncate the LSB
     uint8_t calibration_MSB = (calibration_int >> 8) & 0xFF;
     uint8_t calibration_LSB = calibration_int & 0xFF;
 
-    Serial.print("Truncated post shift: ");
-    Serial.println(calibration_int, BIN);
+    // Serial.print("Truncated post shift: ");
+    // Serial.println(calibration_int, BIN);
 
-    Serial.print("MSB: ");
-    Serial.print(calibration_MSB, BIN);
-    Serial.print(" LSB: ");
-    Serial.println(calibration_LSB, BIN);
+    // Serial.print("MSB: ");
+    // Serial.print(calibration_MSB, BIN);
+    // Serial.print(" LSB: ");
+    // Serial.println(calibration_LSB, BIN);
     // Begin transmission with selected slave module
     Wire.beginTransmission(slave_address);
     // select config register
