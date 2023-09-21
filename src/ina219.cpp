@@ -132,8 +132,8 @@ void set_ina219_calibration_register(float max_current, uint8_t slave_address) {
 
     calibration_int = calibration_int << 1;  // shift left by 1 bit because FS0 (LSB) is not used
     // keep the MSB and truncate the LSB
-    uint8_t calibration_MSB = (calibration_int >> 8) & 0xFF;
-    uint8_t calibration_LSB = calibration_int & 0xFF;
+    // uint8_t calibration_MSB = (calibration_int >> 8) & 0xFF;
+    // uint8_t calibration_LSB = calibration_int & 0xFF;
 
     // Serial.print("Truncated post shift: ");
     // Serial.println(calibration_int, BIN);

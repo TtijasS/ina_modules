@@ -50,7 +50,7 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
             Serial.write((byte)(raw_readings[0] & 0xFF));
             Serial.write((byte)((raw_readings[0] >> 8) & 0xFF));
         } else {
-            endbit();
+            measuring_mode_stopbit();
             delay(5);
             Serial.println("Error: Unable to get readings.");
         }
@@ -86,7 +86,7 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
                 Serial.write((byte)(raw_readings[0] & 0xFF));
                 Serial.write((byte)((raw_readings[0] >> 8) & 0xFF));
             } else {
-                endbit();
+                measuring_mode_stopbit();
                 delay(5);
                 Serial.println("Error: Unable to get readings.");
             }
@@ -94,9 +94,41 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
     }
 }
 
-void startbit() {
+void utf8_mode_startbit() {
     /**
-     * This function is used to send the startbit to the serial monitor
+     * This function is used to send the utf8 communication flag to the serial monitor
+     */
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xFA);
+    Serial.write(0xFA);
+}
+
+void utf8_mode_stopbit() {
+    /**
+     * This function is used to send the utf8 communication flag to the serial monitor
+     */
+    // first write the measuring_mode_startbit that is sent when you do serial.print()
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xFB);
+    Serial.write(0xFB);
+    Serial.write(0x0A);
+}
+
+void measuring_mode_startbit() {
+    /**
+     * This function is used to send the measuring_mode_startbit to the serial monitor
+     */
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xF1);
+    Serial.write(0xF1);
+}
+
+void measuring_mode_stopbit() {
+    /**
+     * This function is used to send the measuring_mode_stopbit to the serial monitor
      */
     Serial.write(0xFF);
     Serial.write(0xFF);
@@ -104,30 +136,29 @@ void startbit() {
     Serial.write(0xF0);
 }
 
-void endbit() {
-    /**
-     * This function is used to send the endbit to the serial monitor
-     */
-    Serial.write(0xFF);
-    Serial.write(0xFF);
-    Serial.write(0x0F);
-    Serial.write(0x0F);
+void send_deltatime(unsigned long deltatime) {
+    utf8_mode_startbit();
+    Serial.print("Deltatime: ");
+    Serial.println(deltatime);
+    utf8_mode_stopbit();
 }
 
-void read_motor_n(uint8_t slave_address, uint8_t analog_port) {
+void read_motor_n(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n) {
     /**
      * This function is used to read data from the ina219 module connected to motor 11
      */
+    uint8_t n_per_pwm = 20;
     unsigned long deltatime{};
     delay(100);
-    startbit();
+    measuring_mode_startbit();
     deltatime = micros();
-    rw_data_n_times(read_ina219_data, slave_address, 20, 0, 255, analog_port);
+    rw_data_n_times(read_ina219_data, slave_address, n_per_pwm, 0, 255, analog_port);
     analogWrite(11, 255);
-    rw_data_n_times(read_ina219_data, slave_address, 8000);
+    rw_data_n_times(read_ina219_data, slave_address, readings_n - n_per_pwm * 255);
     deltatime = micros() - deltatime;
-    endbit();
-    analogWrite(analog_port, 0);
-    Serial.print("\nDeltatime: ");
-    Serial.println(deltatime);
+    measuring_mode_stopbit();
+
+    send_deltatime(deltatime);
+
+    // Send the deltatime in microseconds in utf8 mode
 }
