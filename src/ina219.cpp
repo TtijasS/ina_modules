@@ -48,7 +48,9 @@ uint16_t *read_ina219_data(uint8_t slave_address) {
     if (Wire.available() >= 2) {
         raw_readings[0] = (Wire.read() << 8) | Wire.read();  // Current
     } else {
-        Serial.println("Error: Unable to read data from INA219");
+        utf8_mode_startbit();
+        Serial.println("Error: Unable to read current from INA219");
+        utf8_mode_stopbit();
     }
 
     Wire.beginTransmission((uint8_t)slave_address);
@@ -60,7 +62,9 @@ uint16_t *read_ina219_data(uint8_t slave_address) {
         raw_readings[1] = (Wire.read() << 8) | Wire.read();  // Voltage
         raw_readings[1] >>= 3;
     } else {
-        Serial.println("Error: Unable to read data from INA219");
+        utf8_mode_startbit();
+        Serial.println("Error: Unable to read voltage from INA219");
+        utf8_mode_stopbit();
     }
 
     // voltage should be multiplied with 4mV, current with CURRENT_LSB
