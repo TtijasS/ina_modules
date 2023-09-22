@@ -5,6 +5,13 @@
 
 #include "fsm_cls.h"
 
+FsmCls fsm_pwm3;
+FsmCls fsm_pwm9;
+FsmCls fsm_pwm10;
+FsmCls fsm_pwm11;
+uint16_t pwm_delays[4]{0, 0, 0, 0};
+uint8_t pwm_delays_index{0};
+
 uint16_t request_ina_reg_data(uint8_t slave_address, uint8_t register_address);
 
 typedef uint16_t* (*ReadingFunction)(uint8_t);
@@ -26,5 +33,9 @@ void measuring_mode_startbit();
 void measuring_mode_stopbit();
 
 void exit_serial_signal();
+
+void multi_device_measuring();
+
+uint16_t read_two_bytes();
 
 #endif

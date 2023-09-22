@@ -7,6 +7,7 @@
 #include "fsm_cls.h"
 #include "ina219.h"
 #include "ina260.h"
+#include "timer.h"
 
 /**
  * This function is used to request data from the ina219 or ina260 modules
@@ -244,4 +245,42 @@ void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t n_reading
     send_deltatime(deltatime);
 
     // Send the deltatime in microseconds in utf8 mode
+}
+
+void multi_device_measuring() {
+    TimerCls timer_pwm3;
+    TimerCls timer_pwm9;
+    TimerCls timer_pwm10;
+    TimerCls timer_pwm11;
+    while (true) {
+        if (Serial.available() > 0) {
+            if (Serial.read() == 0x26) {
+                measuring_mode_stopbit();
+                break;
+            }
+        }
+        if (timer_pwm3.stopwatch_no_reset(pwm_delays[0]))
+            rw_data_fsm(fsm_pwm3, read_ina219_data, INA219_PWM3, READ_PER_PWM, PWM3);
+
+        if (timer_pwm9.stopwatch_no_reset(pwm_delays[1]))
+            rw_data_fsm(fsm_pwm9, read_ina219_data, INA219_PWM9, READ_PER_PWM, PWM9);
+
+        if (timer_pwm10.stopwatch_no_reset(pwm_delays[2]))
+            rw_data_fsm(fsm_pwm10, read_ina219_data, INA219_PWM10, READ_PER_PWM, PWM10);
+
+        if (timer_pwm11.stopwatch_no_reset(pwm_delays[3]))
+            rw_data_fsm(fsm_pwm11, read_ina219_data, INA219_PWM11, READ_PER_PWM, PWM11);
+    }
+}
+
+uint16_t read_two_bytes() {
+    while (Serial.available() < 2) {  // Wait until two bytes are available
+        delay(10);
+    }
+
+    byte msb = (byte)Serial.read();  // Read the first byte (MSB)
+    byte lsb = (byte)Serial.read();  // Read the second byte (LSB)
+
+    uint16_t combined = (msb << 8) | lsb;  // Shift the MSB left by 8 bits and OR with LSB
+    return combined;
 }
