@@ -4,6 +4,7 @@
 #include <Wire.h>
 
 #include "constants.h"
+#include "fsm_cls.h"
 #include "ina219.h"
 #include "ina260.h"
 
@@ -32,16 +33,16 @@ uint16_t request_ina_reg_data(uint8_t slave_address, uint8_t register_address) {
 }
 
 /**
- * This function is used to read data from the ina219 or ina260 modules readings_n times
+ * This function is used to read data from the ina219 or ina260 modules n_readings times
  *
  * @param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
  * @param slave_address Address of the ina219 or ina260 modules
- * @param readings_n Number of readings to take
+ * @param n_readings Number of readings to take
  */
-void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_n) {
+void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t n_readings) {
     uint16_t *raw_readings = nullptr;
 
-    for (uint16_t i = 0; i < readings_n; i++) {
+    for (uint16_t i = 0; i < n_readings; i++) {
         delayMicroseconds(60);
         raw_readings = reading_function(slave_address);
         if (raw_readings != nullptr) {
@@ -58,16 +59,16 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
 }
 
 /**
- *	This function is used to read data from the ina219 or ina260 modules readings_n times for each pwm value from_pwm to to_pwm
+ *	This function is used to read data from the ina219 or ina260 modules n_readings times for each pwm value from_pwm to to_pwm
  *
  *	@param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
  *	@param slave_address Address of the ina219 or ina260 modules
- *	@param readings_n Number of readings to take at each pwm value
+ *	@param n_readings Number of readings to take at each pwm value
  *	@param from_pwm PWM value to start from
  *	@param to_pwm PWM value to end at
  *	@param analog_port Port the pwm is connected to
  */
-void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_n, uint8_t from_pwm, uint8_t to_pwm, uint8_t analog_port) {
+void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t n_readings, uint8_t from_pwm, uint8_t to_pwm, uint8_t analog_port) {
     // Ensure valid PWM range
     if (from_pwm > 255) from_pwm = 255;
     if (to_pwm > 255) to_pwm = 255;
@@ -76,7 +77,7 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
     for (uint16_t pwm = from_pwm; pwm <= to_pwm; pwm++) {
         analogWrite(analog_port, pwm);
 
-        for (uint16_t i = 0; i < readings_n; i++) {
+        for (uint16_t i = 0; i < n_readings; i++) {
             raw_readings = reading_function(slave_address);
 
             if (raw_readings != nullptr) {
@@ -89,6 +90,70 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
                 delay(5);
                 Serial.println("Error: Unable to get readings.");
             }
+        }
+    }
+}
+
+/**
+ * This is the FSM version of function that is used to read data from the ina219 or ina260 modules n_readings times
+ *
+ * @param fsm State machine
+ * @param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
+ * @param slave_address Address of the ina219 or ina260 modules
+ * @param readings_per_pwm Number of readings to take at each pwm value until max is reached.
+ * @param analog_port Port the pwm is connected to
+ */
+void rw_data_fsm(FsmCls &fsm, ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_per_pwm, uint8_t analog_port) {
+    uint16_t *raw_readings = nullptr;
+
+    // Serial.print("PWM  ");
+    // Serial.print(analog_port);
+    // Serial.print(" > pwm_state: ");
+    // Serial.print(fsm.get_pwm_state());
+    // Serial.print(" readings_state: ");
+    // Serial.println(fsm.get_readings_state());
+
+    // read data
+    raw_readings = reading_function(slave_address);
+
+    if (raw_readings != nullptr) {
+        // write divice id (array position on the pyhton side)
+        switch (analog_port) {
+            case 3:
+                Serial.write((byte)0);
+                break;
+            case 9:
+                Serial.write((byte)1);
+                break;
+            case 10:
+                Serial.write((byte)2);
+                break;
+            case 11:
+                Serial.write((byte)3);
+                break;
+            default:
+                break;
+        }
+        // write current and voltage data
+        Serial.write((byte)(raw_readings[1] & 0xFF));
+        Serial.write((byte)((raw_readings[1] >> 8) & 0xFF));
+        Serial.write((byte)(raw_readings[0] & 0xFF));
+        Serial.write((byte)((raw_readings[0] >> 8) & 0xFF));
+    } else {
+        measuring_mode_stopbit();
+        delay(5);
+        utf8_mode_startbit();
+        Serial.println("Error: Unable to get readings.");
+        utf8_mode_stopbit();
+    }
+
+    if (fsm.check_pwm_bound(255)) {
+        if (fsm.check_readings_bound(readings_per_pwm)) {
+            fsm.increment_readings();
+        } else {
+            fsm.increment_pwm();
+            fsm.reset_readings();
+            analogWrite(analog_port, fsm.get_pwm_state());
         }
     }
 }
@@ -162,9 +227,9 @@ void send_deltatime(unsigned long deltatime) {
  *
  * @param slave_address Address of the ina219 module
  * @param analog_port Port the pwm is connected to
- * @param readings_n Number of readings to take from start to finish
+ * @param n_readings Number of readings to take from start to finish
  */
-void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n) {
+void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t n_readings) {
     uint8_t n_per_pwm = 20;
     unsigned long deltatime{};
     delay(10);
@@ -172,7 +237,7 @@ void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t readings_
     deltatime = micros();
     rw_data_n_times(read_ina219_data, slave_address, n_per_pwm, 0, 255, analog_port);
     analogWrite(analog_port, 255);
-    rw_data_n_times(read_ina219_data, slave_address, readings_n - n_per_pwm * 256);
+    rw_data_n_times(read_ina219_data, slave_address, n_readings - n_per_pwm * 256);
     deltatime = micros() - deltatime;
     measuring_mode_stopbit();
 
