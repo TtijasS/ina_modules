@@ -57,18 +57,17 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
     }
 }
 
+/**
+ *	This function is used to read data from the ina219 or ina260 modules readings_n times for each pwm value from_pwm to to_pwm
+ *
+ *	@param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
+ *	@param slave_address Address of the ina219 or ina260 modules
+ *	@param readings_n Number of readings to take at each pwm value
+ *	@param from_pwm PWM value to start from
+ *	@param to_pwm PWM value to end at
+ *	@param analog_port Port the pwm is connected to
+ */
 void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_n, uint8_t from_pwm, uint8_t to_pwm, uint8_t analog_port) {
-    /**
-     *	This function is used to read data from the ina219 or ina260 modules readings_n times for each pwm value from_pwm to to_pwm
-     *
-     *	@param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
-     *	@param slave_address Address of the ina219 or ina260 modules
-     *	@param readings_n Number of readings to take at each pwm value
-     *	@param from_pwm PWM value to start from
-     *	@param to_pwm PWM value to end at
-     *	@param analog_port Port the pwm is connected to
-     */
-
     // Ensure valid PWM range
     if (from_pwm > 255) from_pwm = 255;
     if (to_pwm > 255) to_pwm = 255;
@@ -94,20 +93,20 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
     }
 }
 
+/**
+ * This function is used to send the utf8 communication flag to the serial monitor
+ */
 void utf8_mode_startbit() {
-    /**
-     * This function is used to send the utf8 communication flag to the serial monitor
-     */
     Serial.write(0xFF);
     Serial.write(0xFF);
     Serial.write(0xFA);
     Serial.write(0xFA);
 }
 
+/**
+ * This function is used to send the utf8 communication flag to the serial monitor
+ */
 void utf8_mode_stopbit() {
-    /**
-     * This function is used to send the utf8 communication flag to the serial monitor
-     */
     // first write the measuring_mode_startbit that is sent when you do serial.print()
     Serial.write(0xFF);
     Serial.write(0xFF);
@@ -116,26 +115,41 @@ void utf8_mode_stopbit() {
     Serial.write(0x0A);
 }
 
+/**
+ * This function is used to send the measuring_mode_startbit to the serial monitor
+ */
 void measuring_mode_startbit() {
-    /**
-     * This function is used to send the measuring_mode_startbit to the serial monitor
-     */
     Serial.write(0xFF);
     Serial.write(0xFF);
     Serial.write(0xF1);
     Serial.write(0xF1);
 }
 
+/**
+ * This function is used to send the measuring_mode_stopbit to the serial monitor
+ */
 void measuring_mode_stopbit() {
-    /**
-     * This function is used to send the measuring_mode_stopbit to the serial monitor
-     */
     Serial.write(0xFF);
     Serial.write(0xFF);
     Serial.write(0xF0);
     Serial.write(0xF0);
 }
 
+/**
+ * This function is used to send the exit_serial_signal to the serial monitor
+ */
+void exit_serial_signal() {
+    utf8_mode_startbit();
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0x0A);
+}
+
+/**
+ * This function is used to send the deltatime in microseconds in utf8 mode
+ */
 void send_deltatime(unsigned long deltatime) {
     utf8_mode_startbit();
     Serial.print("Deltatime: ");
@@ -143,18 +157,22 @@ void send_deltatime(unsigned long deltatime) {
     utf8_mode_stopbit();
 }
 
-void read_motor_n(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n) {
-    /**
-     * This function is used to read data from the ina219 module connected to motor 11
-     */
+/**
+ * This function is used to read data from the desired ina219 module
+ *
+ * @param slave_address Address of the ina219 module
+ * @param analog_port Port the pwm is connected to
+ * @param readings_n Number of readings to take from start to finish
+ */
+void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n) {
     uint8_t n_per_pwm = 20;
     unsigned long deltatime{};
-    delay(100);
+    delay(10);
     measuring_mode_startbit();
     deltatime = micros();
     rw_data_n_times(read_ina219_data, slave_address, n_per_pwm, 0, 255, analog_port);
-    analogWrite(11, 255);
-    rw_data_n_times(read_ina219_data, slave_address, readings_n - n_per_pwm * 255);
+    analogWrite(analog_port, 255);
+    rw_data_n_times(read_ina219_data, slave_address, readings_n - n_per_pwm * 256);
     deltatime = micros() - deltatime;
     measuring_mode_stopbit();
 

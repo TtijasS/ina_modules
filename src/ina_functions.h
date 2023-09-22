@@ -11,6 +11,8 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
 
 void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_n, uint8_t from_pwm, uint8_t to_pwm, uint8_t analog_port);
 
+void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n);
+
 void utf8_mode_startbit();
 
 void utf8_mode_stopbit();
@@ -19,6 +21,6 @@ void measuring_mode_startbit();
 
 void measuring_mode_stopbit();
 
-void read_motor_n(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n);
+void exit_serial_signal();
 
 #endif

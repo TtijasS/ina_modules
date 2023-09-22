@@ -17,6 +17,6 @@ const uint8_t PWM9 = 9;    // PWM pin 9
 const uint8_t PWM10 = 10;  // PWM pin 10
 const uint8_t PWM11 = 11;  // PWM pin 6
 
-const double MAX_CURRENT{700.0};  // 1000mA
+const double MAX_CURRENT{700.0};  // mA
 
 #endif
