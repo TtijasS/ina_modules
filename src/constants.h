@@ -18,5 +18,7 @@ const uint8_t PWM10 = 10;  // PWM pin 10
 const uint8_t PWM11 = 11;  // PWM pin 6
 
 const double MAX_CURRENT{700.0};  // mA
+uint16_t N_READINGS{14000};
+uint8_t READ_PER_PWM{19};
 
 #endif
