@@ -7,6 +7,7 @@
 #include "fsm_cls.h"
 #include "ina219.h"
 #include "ina260.h"
+#include "shared_vars.h"
 #include "timer.h"
 
 /**
@@ -96,45 +97,69 @@ void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, ui
 }
 
 /**
+ * This function is used to read data from the desired ina219 module
+ *
+ * @param slave_address Address of the ina219 module
+ * @param analog_port Port the pwm is connected to
+ * @param n_readings Number of readings to take from start to finish
+ */
+void read_device_ntimes(uint8_t slave_address, uint8_t analog_port, uint16_t n_readings) {
+    uint8_t n_per_pwm = 20;
+    unsigned long deltatime{};
+    measuring_mode_startbit();
+    deltatime = micros();
+    rw_data_n_times(read_ina219_data, slave_address, n_per_pwm, 0, 255, analog_port);
+    analogWrite(analog_port, 255);
+    rw_data_n_times(read_ina219_data, slave_address, n_readings - n_per_pwm * 256);
+    deltatime = micros() - deltatime;
+    measuring_mode_stopbit();
+
+    send_deltatime(deltatime);
+
+    // Send the deltatime in microseconds in utf8 mode
+}
+
+/**
  * This is the FSM version of function that is used to read data from the ina219 or ina260 modules n_readings times
  *
  * @param fsm State machine
+ * @param delay_ms Delay device startup in ms
  * @param reading_function Function used to read the data (either read_ina219_data or read_ina260_data)
  * @param slave_address Address of the ina219 or ina260 modules
  * @param readings_per_pwm Number of readings to take at each pwm value until max is reached.
  * @param analog_port Port the pwm is connected to
  */
-void rw_data_fsm(FsmCls &fsm, ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_per_pwm, uint8_t analog_port) {
+void rw_data_fsm(FsmCls &fsm, uint8_t slave_address, uint8_t analog_port) {
     uint16_t *raw_readings = nullptr;
 
-    // Serial.print("PWM  ");
-    // Serial.print(analog_port);
-    // Serial.print(" > pwm_state: ");
-    // Serial.print(fsm.get_pwm_state());
-    // Serial.print(" readings_state: ");
-    // Serial.println(fsm.get_readings_state());
-
     // read data
-    raw_readings = reading_function(slave_address);
+    raw_readings = read_ina219_data(slave_address);
+
+    // Serial.print("Port: ");
+    // Serial.print(analog_port, HEX);
+    // Serial.print("  PWM: ");
+    // Serial.print(fsm.get_pwm_state());
+    // Serial.print("  Readings: ");
+    // Serial.println(fsm.get_readings_state());
 
     if (raw_readings != nullptr) {
         // write divice id (array position on the pyhton side)
-        switch (analog_port) {
-            case 3:
-                Serial.write((byte)0);
-                break;
-            case 9:
-                Serial.write((byte)1);
-                break;
-            case 10:
-                Serial.write((byte)2);
-                break;
-            case 11:
-                Serial.write((byte)3);
-                break;
-            default:
-                break;
-        }
+        // switch (analog_port) {
+        //     case 3:
+        //         Serial.write((byte)0);
+        //         break;
+        //     case 9:
+        //         Serial.write((byte)1);
+        //         break;
+        //     case 10:
+        //         Serial.write((byte)2);
+        //         break;
+        //     case 11:
+        //         Serial.write((byte)3);
+        //         break;
+        //     default:
+        //         break;
+        // }
         // write current and voltage data
         Serial.write((byte)(raw_readings[1] & 0xFF));
         Serial.write((byte)((raw_readings[1] >> 8) & 0xFF));
@@ -144,21 +169,110 @@ void rw_data_fsm(FsmCls &fsm, ReadingFunction reading_function, uint8_t slave_ad
         measuring_mode_stopbit();
         delay(5);
         utf8_mode_startbit();
-        Serial.println("Error: Unable to get readings.");
+        Serial.print("Error: Unable to get readings from ");
+        Serial.println(slave_address, HEX);
         utf8_mode_stopbit();
     }
 
-    if (fsm.check_pwm_bound(255)) {
-        if (fsm.check_readings_bound(readings_per_pwm)) {
-            fsm.increment_readings();
-        } else {
-            fsm.increment_pwm();
-            fsm.reset_readings();
-            analogWrite(analog_port, fsm.get_pwm_state());
+    fsm.step();
+}
+
+void multi_device_measuring(uint16_t n_readings, uint16_t per_pwm) {
+    uint16_t i = 0;
+    multimeasuring_mode_startbit();
+
+    FsmCls fsm_pwm3(pwm_delays[0], 255, per_pwm, PWM3),
+        fsm_pwm9(pwm_delays[1], 255, per_pwm, PWM9),
+        fsm_pwm10(pwm_delays[2], 255, per_pwm, PWM10),
+        fsm_pwm11(pwm_delays[3], 255, per_pwm, PWM11);
+
+    // Just in case update timers
+    fsm_pwm3.update_timer();
+    fsm_pwm9.update_timer();
+    fsm_pwm10.update_timer();
+    fsm_pwm11.update_timer();
+
+    // Prepare deltatime timer
+    unsigned long deltatime = micros();
+
+    while (i < n_readings) {
+        if (Serial.available() > 0) {
+            in_byte = Serial.read();
+            // Keyboard character &
+            if (in_byte == 0x26) {
+                break;
+
+                // Keyboard character !
+            } else if (in_byte == 0x21) {
+                fsm_pwm3.set_pwm_bound(0);
+                fsm_pwm9.set_pwm_bound(0);
+                fsm_pwm10.set_pwm_bound(0);
+                fsm_pwm11.set_pwm_bound(0);
+                fsm_pwm3.set_readings_bound(0);
+                fsm_pwm9.set_readings_bound(0);
+                fsm_pwm10.set_readings_bound(0);
+                fsm_pwm11.set_readings_bound(0);
+                // Keyboard character "
+            } else if (in_byte == 0x22) {
+                fsm_pwm3.set_pwm_bound(255);
+                fsm_pwm9.set_pwm_bound(255);
+                fsm_pwm10.set_pwm_bound(255);
+                fsm_pwm11.set_pwm_bound(255);
+                fsm_pwm3.set_readings_bound(20);
+                fsm_pwm9.set_readings_bound(20);
+                fsm_pwm10.set_readings_bound(20);
+                fsm_pwm11.set_readings_bound(20);
+                fsm_pwm3.update_timer();
+                fsm_pwm9.update_timer();
+                fsm_pwm10.update_timer();
+                fsm_pwm11.update_timer();
+            }
+        }
+
+        rw_data_fsm(fsm_pwm3, INA219_PWM3, PWM3);
+        rw_data_fsm(fsm_pwm9, INA219_PWM9, PWM9);
+        rw_data_fsm(fsm_pwm10, INA219_PWM10, PWM10);
+        rw_data_fsm(fsm_pwm11, INA219_PWM11, PWM11);
+
+        // 0 is infinite readings
+        i++;
+    }
+    deltatime = micros() - deltatime;
+    analogWrite(PWM3, 0);
+    analogWrite(PWM9, 0);
+    analogWrite(PWM10, 0);
+    analogWrite(PWM11, 0);
+    // unsigned long deltatime = deltatime_timer.get_deltatime();
+    measuring_mode_stopbit();
+    utf8_mode_startbit();
+    Serial.println("Finished measuring.");
+    Serial.print("Deltatime: ");
+    Serial.println(deltatime);
+    utf8_mode_stopbit();
+}
+
+void store_delay() {
+    request_delays_startbit();
+
+    if (Serial.available() >= 3) {         // Check if at least three bytes are available
+        byte index = (byte)Serial.read();  // Read the array index
+        byte msb = (byte)Serial.read();    // Read the MSB byte of the delay
+        byte lsb = (byte)Serial.read();    // Read the LSB byte of the delay
+
+        uint16_t combined = (msb << 8) | lsb;  // Shift the MSB left by 8 bits and OR with LSB
+
+        if (index < 4) {                   // Ensure the index is within bounds
+            pwm_delays[index] = combined;  // Store the delay in the array
         }
     }
 }
 
+void request_delays_startbit() {
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xFD);
+    Serial.write(0xFD);
+}
 /**
  * This function is used to send the utf8 communication flag to the serial monitor
  */
@@ -202,6 +316,16 @@ void measuring_mode_stopbit() {
 }
 
 /**
+ * This function is used to send the measuring_mode_startbit to the serial monitor
+ */
+void multimeasuring_mode_startbit() {
+    Serial.write(0xFF);
+    Serial.write(0xFF);
+    Serial.write(0xF4);
+    Serial.write(0xF4);
+}
+
+/**
  * This function is used to send the exit_serial_signal to the serial monitor
  */
 void exit_serial_signal() {
@@ -221,66 +345,4 @@ void send_deltatime(unsigned long deltatime) {
     Serial.print("Deltatime: ");
     Serial.println(deltatime);
     utf8_mode_stopbit();
-}
-
-/**
- * This function is used to read data from the desired ina219 module
- *
- * @param slave_address Address of the ina219 module
- * @param analog_port Port the pwm is connected to
- * @param n_readings Number of readings to take from start to finish
- */
-void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t n_readings) {
-    uint8_t n_per_pwm = 20;
-    unsigned long deltatime{};
-    delay(10);
-    measuring_mode_startbit();
-    deltatime = micros();
-    rw_data_n_times(read_ina219_data, slave_address, n_per_pwm, 0, 255, analog_port);
-    analogWrite(analog_port, 255);
-    rw_data_n_times(read_ina219_data, slave_address, n_readings - n_per_pwm * 256);
-    deltatime = micros() - deltatime;
-    measuring_mode_stopbit();
-
-    send_deltatime(deltatime);
-
-    // Send the deltatime in microseconds in utf8 mode
-}
-
-void multi_device_measuring() {
-    TimerCls timer_pwm3;
-    TimerCls timer_pwm9;
-    TimerCls timer_pwm10;
-    TimerCls timer_pwm11;
-    while (true) {
-        if (Serial.available() > 0) {
-            if (Serial.read() == 0x26) {
-                measuring_mode_stopbit();
-                break;
-            }
-        }
-        if (timer_pwm3.stopwatch_no_reset(pwm_delays[0]))
-            rw_data_fsm(fsm_pwm3, read_ina219_data, INA219_PWM3, READ_PER_PWM, PWM3);
-
-        if (timer_pwm9.stopwatch_no_reset(pwm_delays[1]))
-            rw_data_fsm(fsm_pwm9, read_ina219_data, INA219_PWM9, READ_PER_PWM, PWM9);
-
-        if (timer_pwm10.stopwatch_no_reset(pwm_delays[2]))
-            rw_data_fsm(fsm_pwm10, read_ina219_data, INA219_PWM10, READ_PER_PWM, PWM10);
-
-        if (timer_pwm11.stopwatch_no_reset(pwm_delays[3]))
-            rw_data_fsm(fsm_pwm11, read_ina219_data, INA219_PWM11, READ_PER_PWM, PWM11);
-    }
-}
-
-uint16_t read_two_bytes() {
-    while (Serial.available() < 2) {  // Wait until two bytes are available
-        delay(10);
-    }
-
-    byte msb = (byte)Serial.read();  // Read the first byte (MSB)
-    byte lsb = (byte)Serial.read();  // Read the second byte (LSB)
-
-    uint16_t combined = (msb << 8) | lsb;  // Shift the MSB left by 8 bits and OR with LSB
-    return combined;
 }

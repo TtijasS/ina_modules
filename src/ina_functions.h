@@ -5,24 +5,17 @@
 
 #include "fsm_cls.h"
 
-FsmCls fsm_pwm3;
-FsmCls fsm_pwm9;
-FsmCls fsm_pwm10;
-FsmCls fsm_pwm11;
-uint16_t pwm_delays[4]{0, 0, 0, 0};
-uint8_t pwm_delays_index{0};
-
 uint16_t request_ina_reg_data(uint8_t slave_address, uint8_t register_address);
 
-typedef uint16_t* (*ReadingFunction)(uint8_t);
+typedef uint16_t *(*ReadingFunction)(uint8_t);
 
 void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_n);
 
 void rw_data_n_times(ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_n, uint8_t from_pwm, uint8_t to_pwm, uint8_t analog_port);
 
-void rw_data_fsm(FsmCls& fsm, ReadingFunction reading_function, uint8_t slave_address, uint16_t readings_per_pwm, uint8_t analog_port);
+void rw_data_fsm(FsmCls &fsm, uint8_t slave_address, uint8_t analog_port);
 
-void read_motor_x(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n);
+void read_device_ntimes(uint8_t slave_address, uint8_t analog_port, uint16_t readings_n);
 
 void utf8_mode_startbit();
 
@@ -32,10 +25,16 @@ void measuring_mode_startbit();
 
 void measuring_mode_stopbit();
 
+void multimeasuring_mode_startbit();
+
 void exit_serial_signal();
 
-void multi_device_measuring();
+void multi_device_measuring(uint16_t n_readings, uint16_t per_pwm);
 
-uint16_t read_two_bytes();
+void store_delay();
+
+void send_deltatime(unsigned long deltatime);
+
+void request_delays_startbit();
 
 #endif
