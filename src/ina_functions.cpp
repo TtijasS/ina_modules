@@ -251,23 +251,52 @@ void multi_device_measuring(uint16_t n_readings, uint16_t per_pwm) {
     utf8_mode_stopbit();
 }
 
-void store_delay() {
-    request_delays_startbit();
+void update_delays() {
+    delays_mode_startbit();
+    // Setup timer
+    TimerCls timeout;
+    // Check for timeout (returns true when timeout is exceeded)
+    while (!timeout.stopwatch(40)) {
+        // Check if there is enough data available
+        if (Serial.available() >= 4) {
+            // Read and check the flag byte.
+            byte flag = (byte)Serial.read();
+            // if flag == * character read the next 3 bytes
+            if (flag == 0x2A) {
+                // Read the pwm_delays array index
+                byte index = (byte)Serial.read();
+                // Read the MSB byte of the delay
+                byte msb = (byte)Serial.read();
+                // Read the LSB byte of the delay
+                byte lsb = (byte)Serial.read();
+                // Combine bytes to one uint16_t number
+                uint16_t combined = (msb << 8) | lsb;
 
-    if (Serial.available() >= 3) {         // Check if at least three bytes are available
-        byte index = (byte)Serial.read();  // Read the array index
-        byte msb = (byte)Serial.read();    // Read the MSB byte of the delay
-        byte lsb = (byte)Serial.read();    // Read the LSB byte of the delay
-
-        uint16_t combined = (msb << 8) | lsb;  // Shift the MSB left by 8 bits and OR with LSB
-
-        if (index < 4) {                   // Ensure the index is within bounds
-            pwm_delays[index] = combined;  // Store the delay in the array
+                // Ensure the index is within bounds
+                if (index < 4) {
+                    // Store the delay in array
+                    pwm_delays[index] = combined;
+                    // Send the delay back to the serial monitor to confirm
+                    Serial.write(msb);
+                    Serial.write(lsb);
+                    timeout.upd_timer();
+                } else {
+                    utf8_mode_startbit();
+                    Serial.print("Error: Index out of bounds: ");
+                    Serial.println(index);
+                    utf8_mode_stopbit();
+                }
+            } else if (flag == 0xFD) {
+                return;
+            }
         }
     }
+    utf8_mode_startbit();
+    Serial.println("Error: Timeout.");
+    utf8_mode_stopbit();
 }
 
-void request_delays_startbit() {
+void delays_mode_startbit() {
     Serial.write(0xFF);
     Serial.write(0xFF);
     Serial.write(0xFD);

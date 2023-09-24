@@ -31,10 +31,10 @@ void exit_serial_signal();
 
 void multi_device_measuring(uint16_t n_readings, uint16_t per_pwm);
 
-void store_delay();
+void update_delays();
 
 void send_deltatime(unsigned long deltatime);
 
-void request_delays_startbit();
+void delays_mode_startbit();
 
 #endif

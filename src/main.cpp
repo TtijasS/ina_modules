@@ -56,7 +56,7 @@ void setup() {
 
 void loop() {
     while (Serial.available() <= 0) {
-        delay(10);
+        delay(5);
     }
 
     while (Serial.available() > 0) {
@@ -127,7 +127,7 @@ void loop() {
 
         // Keyboard character ">"
     } else if (in_byte == 0x3E) {
-        store_delay();
+        update_delays();
         // Keyboard character "_"
     } else if (in_byte == 0x5F) {
         utf8_mode_startbit();
